@@ -120,8 +120,24 @@ public class SpymemcachedLibrary implements Library {
         }
         
         @JRubyMethod
+        public IRubyObject set(ThreadContext context, IRubyObject key, IRubyObject value, IRubyObject timeout) {
+            try {
+                return ruby.newBoolean(client.set(key.toString(), (int)timeout.convertToInteger().getLongValue(), value, transcoder).get());
+            } catch (ExecutionException ee) {
+                throw context.runtime.newRuntimeError(ee.getLocalizedMessage());
+            } catch (InterruptedException ie) {
+                throw context.runtime.newThreadError(ie.getLocalizedMessage());
+            }
+        }
+        
+        @JRubyMethod
         public IRubyObject async_set(ThreadContext context, IRubyObject key, IRubyObject value) {
             return new _OperationFuture(client.set(key.toString(), 0, value, transcoder));
+        }
+        
+        @JRubyMethod
+        public IRubyObject async_set(ThreadContext context, IRubyObject key, IRubyObject value, IRubyObject timeout) {
+            return new _OperationFuture(client.set(key.toString(), (int)timeout.convertToInteger().getLongValue(), value, transcoder));
         }
         
         @JRubyMethod
@@ -137,12 +153,11 @@ public class SpymemcachedLibrary implements Library {
         
         @JRubyMethod
         public IRubyObject multiget(ThreadContext context, IRubyObject keys) {
-            Map<String, IRubyObject> results = client.getBulk((List<String>)keys.convertToArray(), transcoder);
-            RubyHash _results = RubyHash.newHash(ruby);
-            for (Map.Entry<String, IRubyObject> entry : results.entrySet()) {
-                _results.op_aset(context, ruby.newString(entry.getKey()), entry.getValue());
+            RubyHash results = RubyHash.newHash(ruby);
+            for (Map.Entry<String, IRubyObject> entry : client.getBulk((List<String>)keys.convertToArray(), transcoder).entrySet()) {
+                results.op_aset(context, ruby.newString(entry.getKey()), entry.getValue());
             }
-            return _results;
+            return results;
         }
         
         @JRubyMethod
@@ -214,11 +229,11 @@ public class SpymemcachedLibrary implements Library {
         @JRubyMethod
         public IRubyObject get(ThreadContext context) {
             try {
-                RubyHash _results = RubyHash.newHash(ruby);
+                RubyHash results = RubyHash.newHash(ruby);
                 for (Map.Entry<String, IRubyObject> entry : bulkFuture.get().entrySet()) {
-                    _results.op_aset(context, ruby.newString(entry.getKey()), entry.getValue());
+                    results.op_aset(context, ruby.newString(entry.getKey()), entry.getValue());
                 }
-                return _results;
+                return results;
             } catch (ExecutionException ee) {
                 throw ruby.newThreadError(ee.getLocalizedMessage());
             } catch (InterruptedException ie) {
