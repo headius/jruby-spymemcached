@@ -4,10 +4,11 @@ JRUBY = defined?(JRUBY_VERSION)
 
 if JRUBY
   require 'jruby'
+  require "jruby-memcached-1.0-SNAPSHOT.jar"
 
-  com.headius.memcached.MemcachedLibrary.new.load(JRuby.runtime, false)
+  com.headius.spymemcached.Spymemcached.new.load(JRuby.runtime, false)
 
-  memcached = JRuby::Memcached.new(['localhost:11211'])
+  memcached = Spymemcached::MemcachedClient.new(['localhost:11211'])
 else
   require 'memcached'
 
@@ -20,8 +21,8 @@ end
     bm.report("set") {
       100_000.times { memcached.set('foo', 'bar') }
     }
-    bm.report("set_lazy") {
-      100_000.times { memcached.set_lazy('foo', 'bar') }
+    bm.report("async_set") {
+      100_000.times { memcached.async_set('foo', 'bar') }
     } if JRUBY
     bm.report("set pipelined") {
       100_000.times { memcached_pipelined.set('foo', 'bar') }
@@ -36,21 +37,23 @@ end
         }
       }.map(&:join)
     }
-    bm.report("get_multi") {
-      25_000.times { memcached.get_multi(['foo', 'foo', 'foo', 'foo']) }
+    bm.report("multiget") {
+      25_000.times { memcached.multiget(['foo', 'foo', 'foo', 'foo']) }
     } if JRUBY
-    bm.report("get_lazy") {
-      100_000.times { memcached.get_lazy('foo') }
+    bm.report("async_get") {
+      100_000.times { memcached.async_get('foo') }
     } if JRUBY
-    bm.report("get_lazy threaded") {
+    bm.report("async_get threaded") {
       (1..4).map {
         Thread.new {
-          25_000.times { memcached.get_lazy('foo') }
+          25_000.times { memcached.async_get('foo') }
         }
       }.map(&:join)
     } if JRUBY
-    bm.report("get_lazy_multi") {
-      25_000.times { memcached.get_lazy_multi(['foo', 'foo', 'foo', 'foo']) }
+    bm.report("async_multiget") {
+      25_000.times { memcached.async_multiget(['foo', 'foo', 'foo', 'foo']) }
     } if JRUBY
   }
 }
+
+memcached.shutdown if JRUBY
