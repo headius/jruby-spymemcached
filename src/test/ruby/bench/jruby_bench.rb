@@ -4,11 +4,16 @@ JRUBY = defined?(JRUBY_VERSION)
 
 if JRUBY
   require 'jruby'
-  require "jruby-memcached-1.0-SNAPSHOT.jar"
+  begin
+    require "jruby-memcached-1.0-SNAPSHOT.jar"
 
-  com.headius.spymemcached.Spymemcached.new.load(JRuby.runtime, false)
-
-  memcached = Spymemcached::MemcachedClient.new(['localhost:11211'])
+    com.headius.spymemcached.SpymemcachedLibrary.new.load(JRuby.runtime, false)
+  rescue LoadError
+    require 'rubygems'
+    require 'spymemcached'
+  end
+  
+  memcached = Spymemcached.new(['localhost:11211'])
 else
   require 'memcached'
 
@@ -23,6 +28,9 @@ end
     }
     bm.report("async_set") {
       100_000.times { memcached.async_set('foo', 'bar') }
+    } if JRUBY
+    bm.report("quiet_set") {
+      100_000.times { memcached.quiet_set('foo', 'bar') }
     } if JRUBY
     bm.report("set pipelined") {
       100_000.times { memcached_pipelined.set('foo', 'bar') }

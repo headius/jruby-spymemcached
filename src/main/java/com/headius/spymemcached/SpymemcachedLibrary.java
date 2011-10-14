@@ -17,7 +17,6 @@ import net.spy.memcached.transcoders.Transcoder;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
-import org.jruby.RubyModule;
 import org.jruby.RubyObject;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
@@ -27,67 +26,68 @@ import org.jruby.runtime.load.Library;
 import org.jruby.runtime.marshal.MarshalStream;
 import org.jruby.runtime.marshal.UnmarshalStream;
 
-public class Spymemcached implements Library {
+public class SpymemcachedLibrary implements Library {
     private Ruby ruby;
+    
     private RubyClass operationFutureClass;
     private RubyClass getFutureClass;
     private RubyClass bulkFutureClass;
+
+    private Transcoder<IRubyObject> transcoder;
     
-    public void load(Ruby ruby, boolean bln) throws IOException {
+    public void load(final Ruby ruby, boolean bln) throws IOException {
         this.ruby = ruby;
         
-        RubyModule spymemcached = ruby.defineModule("Spymemcached");
-        RubyClass memcachedClient = spymemcached.defineClassUnder("MemcachedClient", ruby.getObject(), new ObjectAllocator() {
+        RubyClass spymemcached = ruby.defineClass("Spymemcached", ruby.getObject(), new ObjectAllocator() {
             public IRubyObject allocate(Ruby ruby, RubyClass rc) {
-                return new _MemcachedClient(ruby, rc);
+                return new Spymemcached(ruby, rc);
             }
         });
         
-        memcachedClient.defineAnnotatedMethods(_MemcachedClient.class);
+        spymemcached.defineAnnotatedMethods(Spymemcached.class);
         
         operationFutureClass = spymemcached.defineClassUnder("OperationFuture", ruby.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
         getFutureClass = spymemcached.defineClassUnder("GetFuture", ruby.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
         bulkFutureClass = spymemcached.defineClassUnder("BulkFuture", ruby.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
+        
+        transcoder = new Transcoder<IRubyObject>() {
+            static final int STRING = 0;
+
+            public boolean asyncDecode(CachedData cd) {
+                return false;
+            }
+
+            public CachedData encode(IRubyObject t) {
+                try {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    MarshalStream marshal = new MarshalStream(ruby, baos, Integer.MAX_VALUE);
+                    marshal.dumpObject(t);
+                    byte[] bytes = baos.toByteArray();
+                    return new CachedData(STRING, bytes, bytes.length);
+                } catch (IOException ioe) {
+                    throw ruby.newIOErrorFromException(ioe);
+                }
+            }
+
+            public IRubyObject decode(CachedData cd) {
+                try {
+                    return new UnmarshalStream(ruby, new ByteArrayInputStream(cd.getData()), null, false, false).unmarshalObject();
+                } catch (IOException ioe) {
+                    throw ruby.newIOErrorFromException(ioe);
+                }
+            }
+
+            public int getMaxSize() {
+                return CachedData.MAX_SIZE;
+            }
+        };
     }
     
-    public class _MemcachedClient extends RubyObject {
+    public class Spymemcached extends RubyObject {
         private MemcachedClient client;
-        private Transcoder<IRubyObject> transcoder;
         
-        public _MemcachedClient(final Ruby ruby, RubyClass rubyClass) {
+        public Spymemcached(final Ruby ruby, RubyClass rubyClass) {
             super(ruby, rubyClass);
-            
-            transcoder = new Transcoder<IRubyObject>() {
-                static final int STRING = 0;
-
-                public boolean asyncDecode(CachedData cd) {
-                    return false;
-                }
-                
-                public CachedData encode(IRubyObject t) {
-                    try {
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        MarshalStream marshal = new MarshalStream(ruby, baos, Integer.MAX_VALUE);
-                        marshal.dumpObject(t);
-                        byte[] bytes = baos.toByteArray();
-                        return new CachedData(STRING, bytes, bytes.length);
-                    } catch (IOException ioe) {
-                        throw ruby.newIOErrorFromException(ioe);
-                    }
-                }
-
-                public IRubyObject decode(CachedData cd) {
-                    try {
-                        return new UnmarshalStream(ruby, new ByteArrayInputStream(cd.getData()), null, false, false).unmarshalObject();
-                    } catch (IOException ioe) {
-                        throw ruby.newIOErrorFromException(ioe);
-                    }
-                }
-
-                public int getMaxSize() {
-                    return CachedData.MAX_SIZE;
-                }
-            };
         }
         
         @JRubyMethod
