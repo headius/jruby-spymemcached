@@ -4,6 +4,7 @@ spymemcached client.
 Usage
 -----
 
+```
 require 'rubygems'
 require 'jruby-memcached'
 
@@ -31,3 +32,4 @@ future = memcached.async_multiget(['foo', 'foo', 'foo', 'foo']) # ditto
 future.get
 
 memcached.shutdown if JRUBY
+```
