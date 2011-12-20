@@ -4,7 +4,7 @@
 
   <groupId>com.headius</groupId>
   <artifactId>jruby-memcached</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.0.1</version>
   <packaging>jar</packaging>
 
   <name>jruby-memcached</name>
@@ -57,6 +57,13 @@
             <goals>
               <goal>shade</goal>
             </goals>
+            <configuration>
+              <artifactSet>
+                <excludes>
+                  <exclude>org.jruby:jruby</exclude>
+                </excludes>
+              </artifactSet>
+            </configuration>
           </execution>
         </executions>
       </plugin>
