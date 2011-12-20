@@ -1,6 +1,16 @@
 This is basically just a thin JRuby extension wrapping the
 spymemcached client.
 
+Building
+--------
+
+I used Maven because I'm lazy.
+
+```
+mvn package
+gem build src/main/ruby/jruby-spymemcached.gemspec
+```
+
 Usage
 -----
 
@@ -33,3 +43,9 @@ future.get
 
 memcached.shutdown if JRUBY
 ```
+
+TODO
+----
+
+* API-compatible wrappers for the popular Ruby memcached libs.
+* More spymemcached feature exposure
