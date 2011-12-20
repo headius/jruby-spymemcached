@@ -10,7 +10,9 @@ require 'jruby-memcached'
 memcached = Spymemcached.new(['localhost:11211'])
 
 memcached.set('foo', 'bar') # synchronous set
-memcached.async_set('foo', 'bar') # async set
+future = memcached.async_set('foo', 'bar') # async set
+#...
+future.get # or not, if you don't care about result
 
 memcached.get('foo')
 10.times {
@@ -20,7 +22,12 @@ memcached.get('foo')
 }
 memcached.multiget(['foo', 'foo', 'foo', 'foo']) # get multi
 
-memcached.async_get('foo') # async get, returns a future
-memcached.async_multiget(['foo', 'foo', 'foo', 'foo']) # ditto
+future = memcached.async_get('foo') # async get, returns a future
+#...
+future.get
+
+future = memcached.async_multiget(['foo', 'foo', 'foo', 'foo']) # ditto
+#...
+future.get
 
 memcached.shutdown if JRUBY
