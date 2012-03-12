@@ -1,2 +1,5 @@
 /.redcar/
+.idea/
+*.iml
 /target/
+/out/
