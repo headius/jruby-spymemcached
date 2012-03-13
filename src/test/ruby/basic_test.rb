@@ -25,7 +25,8 @@ class BasicTest < Test::Unit::TestCase
 
   def test_add
     spy.add("foo", "bar")
-    assert_equal "bar", Marshal.load(native_conn.get("foo"))
+    result = native_conn.get("foo")
+    assert_equal "bar", Marshal.load(result)
   end
 
   def test_add_does_nothing_if_value_exists
@@ -64,11 +65,23 @@ class BasicTest < Test::Unit::TestCase
     assert_nil native_conn.get("delete_me")
   end
 
-  def test_namespacing_works
+  def test_namespacing_works_with_set_and_get
     namespaced = Spymemcached.new(["localhost:11211"], :namespace => "jruby")
     namespaced.set("yes", "yes")
     assert_nil spy.get("yes")
     assert_equal "yes", namespaced.get("yes")
+    namespaced.shutdown
+  end
+
+  def test_namespacing_works_with_multiget
+    namespaced = Spymemcached.new(["localhost:11211"], :namespace => "test")
+    namespaced.set("bar",  "foo")
+    namespaced.set("foo", "bar")
+    result = namespaced.multiget(["bar", "foo"])
+    assert_equal "foo",  result["bar"]
+    assert_equal "bar",  result["foo"]
+    assert_equal "foo", spy.get("test:bar")
+    assert_equal "bar", spy.get("test:foo")
     namespaced.shutdown
   end
 

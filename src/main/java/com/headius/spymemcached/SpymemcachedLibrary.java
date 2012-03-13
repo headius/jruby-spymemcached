@@ -355,23 +355,23 @@ public class SpymemcachedLibrary implements Library {
     public class NamespaceHelper {
         private String namespace;
         public NamespaceHelper(String namespace) {
-            this.namespace = namespace;
+            this.namespace = namespace == null ? namespace : namespace + ":";
         }
 
         public String namespacedKey(IRubyObject key) {
-            return namespace != null ? namespace + ":" + key.toString() : key.toString();
+            return namespace != null ? namespace +  key.toString() : key.toString();
         }
 
         public List<String> namespacedKeys(IRubyObject keys) {
             List<String> results = new ArrayList<String>();
             for(String key : (List<String>)keys.convertToArray()) {
-                results.add(namespace == null ? key : namespace + ":" + key);
+                results.add(namespace == null ? key : namespace  + key);
             }
             return results;
         }
 
         public IRubyObject unnamespacedKey(String key) {
-            return namespace != null ? ruby.newString(key.substring(namespace.length() + 1)) : ruby.newString(key);
+            return namespace != null ? ruby.newString(key.substring(namespace.length())) : ruby.newString(key);
         }
     }
 }
