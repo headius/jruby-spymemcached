@@ -16,7 +16,7 @@ Usage
 
 ```
 require 'rubygems'
-require 'jruby-memcached'
+require 'memcached'
 
 memcached = Spymemcached.new(['localhost:11211'])
 
