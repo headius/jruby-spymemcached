@@ -14,12 +14,14 @@ import net.spy.memcached.MemcachedClient;
 import net.spy.memcached.internal.BulkFuture;
 import net.spy.memcached.internal.GetFuture;
 import net.spy.memcached.internal.OperationFuture;
+import net.spy.memcached.transcoders.SerializingTranscoder;
 import net.spy.memcached.transcoders.Transcoder;
+
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
+import org.jruby.RubyInteger;
 import org.jruby.RubyObject;
-import org.jruby.RubyString;
 import org.jruby.RubySymbol;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
@@ -59,6 +61,7 @@ public class SpymemcachedLibrary implements Library {
 
         transcoder = new Transcoder<IRubyObject>() {
             static final int STRING = 0;
+            private final Transcoder coder = new SerializingTranscoder();
 
             public boolean asyncDecode(CachedData cd) {
                 return false;
@@ -66,6 +69,11 @@ public class SpymemcachedLibrary implements Library {
 
             public CachedData encode(IRubyObject t) {
                 try {
+                    // If we're given a number, send it as a Java string
+                    // so we can incr/decr it.
+                    if (t instanceof RubyInteger) {
+                        return coder.encode(t.toString());
+                    }
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     MarshalStream marshal = new MarshalStream(ruby, baos, Integer.MAX_VALUE);
                     marshal.dumpObject(t);
@@ -78,6 +86,11 @@ public class SpymemcachedLibrary implements Library {
 
             public IRubyObject decode(CachedData cd) {
                 try {
+                    // If we don't have our STRING flag, then it must be
+                    // a number we've stored as a Java string.
+                    if (cd.getFlags() != STRING) {
+                        return ruby.newFixnum(Long.valueOf((String)coder.decode(cd)));
+                    }
                     return new UnmarshalStream(ruby, new ByteArrayInputStream(cd.getData()), null, false, false).unmarshalObject();
                 } catch (IOException ioe) {
                     throw ruby.newIOErrorFromException(ioe);
@@ -342,17 +355,17 @@ public class SpymemcachedLibrary implements Library {
     public class NamespaceHelper {
         private String namespace;
         public NamespaceHelper(String namespace) {
-            this.namespace = namespace;
+            this.namespace = namespace == null ? namespace : namespace + ":";
         }
 
         public String namespacedKey(IRubyObject key) {
-            return namespace != null ? namespace + key.toString() : key.toString();
+            return namespace != null ? namespace +  key.toString() : key.toString();
         }
 
         public List<String> namespacedKeys(IRubyObject keys) {
             List<String> results = new ArrayList<String>();
             for(String key : (List<String>)keys.convertToArray()) {
-                results.add(namespace == null ? key : namespace + key);
+                results.add(namespace == null ? key : namespace  + key);
             }
             return results;
         }
